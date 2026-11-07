@@ -515,7 +515,17 @@
     return card;
   }
 
+  function stopActivePreview() {
+    if (!activeAudio) return;
+    const previousAudio = activeAudio;
+    activeAudio = null;
+    previousAudio.pause();
+    previousAudio.currentTime = 0;
+    previousAudio._updateCustomPlayer?.();
+  }
+
   function applyFilters() {
+    stopActivePreview();
     const selectedGenre = genreFilter.value;
     const sortMode = sortSelect.value;
     let visibleTracks = currentTracks.filter((track) => {
@@ -557,6 +567,7 @@
   }
 
   async function searchMusic(keyword) {
+    stopActivePreview();
     const requestId = ++latestRequest;
     if (activeController) activeController.abort();
     activeController = null;
