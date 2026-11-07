@@ -2,15 +2,30 @@
   "use strict";
 
   const API_URL = "https://itunes.apple.com/search";
+  const CACHE_TTL_MS = 5 * 60 * 1000;
+  const MAX_API_CALLS_PER_MINUTE = 18;
+  const MAX_CACHE_ENTRIES = 12;
+  const MAX_HISTORY_ITEMS = 8;
+  const HISTORY_KEY = "music-search-history-v1";
+  const ITUNES_BADGE_URL = "https://marketing.services.apple/api/storage/images/64e3de01fe821600071349d4/en-us-large%401x.png";
+
   const form = document.querySelector("#search-form");
   const input = document.querySelector("#search-input");
   const searchButton = document.querySelector("#search-button");
   const resultsElement = document.querySelector("#results");
   const statusElement = document.querySelector("#status");
   const countElement = document.querySelector("#result-count");
+  const historyArea = document.querySelector("#history-area");
+  const historyList = document.querySelector("#history-list");
+  const clearHistoryButton = document.querySelector("#clear-history");
+  const sortSelect = document.querySelector("#sort-select");
+  const genreFilter = document.querySelector("#genre-filter");
 
+  const searchCache = new Map();
+  const apiCallTimes = [];
   let activeController = null;
   let latestRequest = 0;
+  let currentTracks = [];
 
   function setStatus(title, message, icon = "♫", loading = false) {
     statusElement.hidden = false;
@@ -31,12 +46,168 @@
     statusElement.append(iconElement, titleElement, messageElement);
   }
 
+  function setSearching(isSearching) {
+    searchButton.disabled = isSearching;
+    searchButton.querySelector("span:first-child").textContent =
+      isSearching ? "検索中" : "検索";
+  }
+
   function formatDuration(milliseconds) {
     if (!Number.isFinite(milliseconds) || milliseconds <= 0) return "";
     const totalSeconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = String(totalSeconds % 60).padStart(2, "0");
     return `${minutes}:${seconds}`;
+  }
+
+  function getArtworkSource(track) {
+    if (!track.artworkUrl100) return "";
+
+    try {
+      const artworkUrl = new URL(track.artworkUrl100);
+      if (artworkUrl.protocol === "http:") artworkUrl.protocol = "https:";
+      if (artworkUrl.protocol !== "https:") return "";
+
+      // Use Apple's larger artwork variant when the returned URL exposes a size segment.
+      artworkUrl.pathname = artworkUrl.pathname.replace(
+        /\/\d+x\d+(?=bb|[-_.])/i,
+        "/600x600"
+      );
+      return artworkUrl.href;
+    } catch {
+      return "";
+    }
+  }
+
+  function getStoreUrl(track) {
+    const fallback = "https://music.apple.com/jp/browse";
+    const rawUrl = track.trackViewUrl || track.collectionViewUrl;
+    if (!rawUrl) return fallback;
+
+    try {
+      const storeUrl = new URL(rawUrl);
+      if (storeUrl.protocol === "http:") storeUrl.protocol = "https:";
+      if (storeUrl.protocol !== "https:" || !storeUrl.hostname.toLowerCase().endsWith("apple.com")) {
+        return fallback;
+      }
+      return storeUrl.href;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function getSearchCacheKey(keyword) {
+    return keyword.trim().toLocaleLowerCase("ja-JP");
+  }
+
+  function getCachedResults(keyword) {
+    const key = getSearchCacheKey(keyword);
+    const entry = searchCache.get(key);
+    if (!entry) return null;
+
+    if (Date.now() - entry.savedAt > CACHE_TTL_MS) {
+      searchCache.delete(key);
+      return null;
+    }
+
+    // Cache only the API response metadata in memory; preview audio is never fetched or stored here.
+    return entry.results;
+  }
+
+  function cacheResults(keyword, results) {
+    const key = getSearchCacheKey(keyword);
+    searchCache.delete(key);
+    searchCache.set(key, { savedAt: Date.now(), results });
+
+    while (searchCache.size > MAX_CACHE_ENTRIES) {
+      const oldestKey = searchCache.keys().next().value;
+      searchCache.delete(oldestKey);
+    }
+  }
+
+  function reserveApiCall() {
+    const now = Date.now();
+    while (apiCallTimes.length && now - apiCallTimes[0] >= 60_000) {
+      apiCallTimes.shift();
+    }
+
+    if (apiCallTimes.length >= MAX_API_CALLS_PER_MINUTE) {
+      const waitMs = Math.max(1000, 60_000 - (now - apiCallTimes[0]));
+      return { allowed: false, waitSeconds: Math.ceil(waitMs / 1000) };
+    }
+
+    apiCallTimes.push(now);
+    return { allowed: true, waitSeconds: 0 };
+  }
+
+  function readHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((item) => typeof item === "string" && item.trim())
+        .map((item) => item.trim())
+        .slice(0, MAX_HISTORY_ITEMS);
+    } catch {
+      return [];
+    }
+  }
+
+  function renderHistory() {
+    const history = readHistory();
+    historyList.replaceChildren();
+    historyArea.hidden = history.length === 0;
+
+    for (const keyword of history) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "history-chip";
+      button.textContent = keyword;
+      button.title = `「${keyword}」をもう一度検索`;
+      button.addEventListener("click", () => {
+        input.value = keyword;
+        form.requestSubmit();
+      });
+      historyList.append(button);
+    }
+  }
+
+  function saveHistory(keyword) {
+    const history = readHistory().filter(
+      (item) => item.toLocaleLowerCase("ja-JP") !== keyword.toLocaleLowerCase("ja-JP")
+    );
+    history.unshift(keyword);
+
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY_ITEMS)));
+    } catch {
+      // Search still works when browser storage is unavailable or full.
+    }
+    renderHistory();
+  }
+
+  function populateGenreFilter(tracks) {
+    const genres = [...new Set(
+      tracks
+        .map((track) => track.primaryGenreName)
+        .filter((genre) => typeof genre === "string" && genre.trim())
+    )].sort((a, b) => a.localeCompare(b, "ja"));
+
+    genreFilter.replaceChildren();
+    const allOption = document.createElement("option");
+    allOption.value = "all";
+    allOption.textContent = "すべて";
+    genreFilter.append(allOption);
+
+    for (const genre of genres) {
+      const option = document.createElement("option");
+      option.value = genre;
+      option.textContent = genre;
+      genreFilter.append(option);
+    }
+
+    genreFilter.disabled = genres.length === 0;
+    genreFilter.value = "all";
   }
 
   function createTrackCard(track) {
@@ -51,11 +222,8 @@
     artwork.alt = track.trackName ? `${track.trackName} のジャケット` : "アルバムジャケット";
     artwork.loading = "lazy";
     artwork.decoding = "async";
-    if (track.artworkUrl100) {
-      artwork.src = track.artworkUrl100;
-    } else {
-      artwork.alt = "ジャケット画像はありません";
-    }
+    artwork.src = getArtworkSource(track);
+    if (!artwork.src) artwork.hidden = true;
     artwork.addEventListener("error", () => {
       artwork.hidden = true;
     }, { once: true });
@@ -76,7 +244,13 @@
     album.textContent = track.collectionName || "アルバム情報なし";
 
     info.append(title, artist, album);
-    main.append(artwork, info);
+
+    if (track.primaryGenreName) {
+      const genre = document.createElement("p");
+      genre.className = "track-genre";
+      genre.textContent = `ジャンル：${track.primaryGenreName}`;
+      info.append(genre);
+    }
 
     const durationText = formatDuration(track.trackTimeMillis);
     if (durationText) {
@@ -86,9 +260,12 @@
       info.append(duration);
     }
 
+    main.append(artwork, info);
+
     const actions = document.createElement("div");
     actions.className = "track-actions";
 
+    // Keep the existing preview player: the audio remains streamed from Apple's preview URL.
     if (track.previewUrl) {
       const audio = document.createElement("audio");
       audio.controls = true;
@@ -96,6 +273,11 @@
       audio.src = track.previewUrl;
       audio.setAttribute("aria-label", `${track.trackName || "この曲"} の試聴`);
       actions.append(audio);
+
+      const attribution = document.createElement("p");
+      attribution.className = "preview-credit";
+      attribution.textContent = "Preview provided courtesy of iTunes.";
+      actions.append(attribution);
     } else {
       const noPreview = document.createElement("span");
       noPreview.className = "no-preview";
@@ -107,11 +289,19 @@
     bottom.className = "track-actions-bottom";
 
     const storeLink = document.createElement("a");
-    storeLink.className = "apple-link";
-    storeLink.textContent = "Apple Musicで見る ↗";
-    storeLink.href = track.trackViewUrl || "https://music.apple.com/jp/browse";
+    storeLink.className = "itunes-badge-link";
+    storeLink.href = getStoreUrl(track);
     storeLink.target = "_blank";
     storeLink.rel = "noopener noreferrer";
+    storeLink.setAttribute("aria-label", "Get it on iTunes Store");
+
+    const badge = document.createElement("img");
+    badge.className = "itunes-badge";
+    badge.src = ITUNES_BADGE_URL;
+    badge.alt = "Get it on iTunes Store";
+    badge.loading = "lazy";
+    badge.decoding = "async";
+    storeLink.append(badge);
     bottom.append(storeLink);
 
     actions.append(bottom);
@@ -119,39 +309,91 @@
     return card;
   }
 
-  function renderResults(tracks) {
+  function applyFilters() {
+    const selectedGenre = genreFilter.value;
+    const sortMode = sortSelect.value;
+    let visibleTracks = currentTracks.filter((track) => {
+      return selectedGenre === "all" || track.primaryGenreName === selectedGenre;
+    });
+
+    if (sortMode === "title") {
+      visibleTracks.sort((a, b) =>
+        (a.trackName || "").localeCompare(b.trackName || "", "ja")
+      );
+    } else if (sortMode === "artist") {
+      visibleTracks.sort((a, b) =>
+        (a.artistName || "").localeCompare(b.artistName || "", "ja")
+      );
+    } else if (sortMode === "newest") {
+      visibleTracks.sort((a, b) =>
+        (Date.parse(b.releaseDate || "") || 0) - (Date.parse(a.releaseDate || "") || 0)
+      );
+    }
+
+    resultsElement.replaceChildren();
+    countElement.textContent = `${visibleTracks.length} / ${currentTracks.length} 件`;
+
+    if (visibleTracks.length === 0) {
+      setStatus(
+        "この条件に合う曲はありません",
+        "ジャンルの選択を変えるか、別の検索キーワードを試してください。",
+        "⌕"
+      );
+      return;
+    }
+
     const fragment = document.createDocumentFragment();
-    for (const track of tracks) {
+    for (const track of visibleTracks) {
       fragment.append(createTrackCard(track));
     }
-    resultsElement.replaceChildren(fragment);
+    resultsElement.append(fragment);
     statusElement.hidden = true;
-    countElement.textContent = `${tracks.length} 件`;
   }
 
   async function searchMusic(keyword) {
     const requestId = ++latestRequest;
     if (activeController) activeController.abort();
-
-    const controller = new AbortController();
-    activeController = controller;
-
-    const params = new URLSearchParams({
-      term: keyword,
-      country: "JP",
-      media: "music",
-      entity: "song",
-      limit: "30",
-      lang: "ja_jp"
-    });
+    activeController = null;
 
     resultsElement.replaceChildren();
     countElement.textContent = "";
     setStatus("検索しています…", "iTunesのカタログから楽曲を探しています。", "♫", true);
-    searchButton.disabled = true;
-    searchButton.querySelector("span:first-child").textContent = "検索中";
+    setSearching(true);
 
     try {
+      const cachedResults = getCachedResults(keyword);
+      if (cachedResults) {
+        if (requestId !== latestRequest) return;
+        currentTracks = cachedResults;
+        populateGenreFilter(currentTracks);
+        sortSelect.value = "relevance";
+        saveHistory(keyword);
+        applyFilters();
+        return;
+      }
+
+      const slot = reserveApiCall();
+      if (!slot.allowed) {
+        setStatus(
+          "検索リクエストが多くなっています",
+          `APIへの連続アクセスを避けるため、約 ${slot.waitSeconds} 秒後にもう一度検索してください。`,
+          "!"
+        );
+        return;
+      }
+
+      const controller = new AbortController();
+      activeController = controller;
+
+      const params = new URLSearchParams({
+        term: keyword,
+        country: "JP",
+        media: "music",
+        entity: "song",
+        limit: "30",
+        lang: "ja_jp"
+      });
+
       const response = await fetch(`${API_URL}?${params.toString()}`, {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -159,34 +401,59 @@
       });
 
       if (!response.ok) {
-        throw new Error(`APIからエラーが返されました（HTTP ${response.status}）。`);
+        const error = new Error(`API request failed: HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
       }
 
       const data = await response.json();
       if (requestId !== latestRequest) return;
 
       const tracks = Array.isArray(data.results) ? data.results : [];
+      cacheResults(keyword, tracks);
+      currentTracks = tracks;
+      populateGenreFilter(currentTracks);
+      sortSelect.value = "relevance";
+      saveHistory(keyword);
+
       if (tracks.length === 0) {
         countElement.textContent = "0 件";
-        setStatus("曲が見つかりませんでした", "別の曲名やアーティスト名でもう一度検索してみてください。", "⌕");
+        setStatus(
+          "曲が見つかりませんでした",
+          "別の曲名やアーティスト名でもう一度検索してみてください。",
+          "⌕"
+        );
         return;
       }
 
-      renderResults(tracks);
+      applyFilters();
     } catch (error) {
       if (error.name === "AbortError") return;
       if (requestId !== latestRequest) return;
 
       console.error("Music search failed:", error);
-      setStatus(
-        "検索できませんでした",
-        "通信環境を確認して、少し時間をおいてからもう一度お試しください。",
-        "!"
-      );
+      if (error.status === 429) {
+        setStatus(
+          "APIの利用制限に達しました",
+          "少し時間をおいてから、もう一度検索してください。",
+          "!"
+        );
+      } else if (error.status === 403) {
+        setStatus(
+          "APIへのアクセスが一時的に制限されています",
+          "しばらく時間をおいてから、もう一度お試しください。",
+          "!"
+        );
+      } else {
+        setStatus(
+          "検索できませんでした",
+          "通信環境を確認して、少し時間をおいてからもう一度お試しください。",
+          "!"
+        );
+      }
     } finally {
       if (requestId === latestRequest) {
-        searchButton.disabled = false;
-        searchButton.querySelector("span:first-child").textContent = "検索";
+        setSearching(false);
         activeController = null;
       }
     }
@@ -197,7 +464,11 @@
     const keyword = input.value.trim();
     if (!keyword) {
       input.focus();
-      setStatus("検索キーワードを入力してください", "曲名またはアーティスト名を入力すると検索できます。", "⌕");
+      setStatus(
+        "検索キーワードを入力してください",
+        "曲名またはアーティスト名を入力すると検索できます。",
+        "⌕"
+      );
       return;
     }
     searchMusic(keyword);
@@ -209,4 +480,18 @@
       form.requestSubmit();
     });
   });
+
+  sortSelect.addEventListener("change", applyFilters);
+  genreFilter.addEventListener("change", applyFilters);
+
+  clearHistoryButton.addEventListener("click", () => {
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+    } catch {
+      // Ignore storage errors; the history panel will still be hidden for this page view.
+    }
+    renderHistory();
+  });
+
+  renderHistory();
 })();
