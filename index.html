@@ -38,11 +38,13 @@
           maxlength="120"
           required
         >
+        <button id="clear-search" class="clear-search" type="button" aria-label="検索キーワードをクリア" title="入力をクリア" hidden>×</button>
         <button id="search-button" type="submit">
           <span>検索</span>
           <span aria-hidden="true">→</span>
         </button>
       </form>
+      <p class="search-help">Enterで検索 ・ Escで入力をクリア ・ / キーで検索欄に移動</p>
 
       <div class="suggestions" aria-label="検索例">
         <span class="suggestions-label">POPULAR SEARCHES</span>
@@ -65,7 +67,7 @@
       <div class="results-heading-row">
         <div>
           <p class="section-kicker">DISCOVER MUSIC</p>
-          <h2 id="results-heading">検索結果</h2>
+          <h2 id="results-heading">検索結果 <span class="result-limit">最大10件</span></h2>
         </div>
         <span id="result-count" class="result-count" aria-live="polite"></span>
       </div>
