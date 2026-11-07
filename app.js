@@ -525,4 +525,5 @@
   });
 
   renderHistory();
+  syncClearButton();
 })();
