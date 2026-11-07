@@ -416,3 +416,56 @@ h2 { margin: 0; font-size: 23px; letter-spacing: -.7px; }
   .track-actions-bottom { gap: 8px; }
   .itunes-badge { width: 102px; }
 }
+
+
+/* Small usability refinements */
+.search-help {
+  margin: 10px 0 0;
+  color: #a0a4b4;
+  font-size: 10px;
+  letter-spacing: .1px;
+}
+.search-form { position: relative; }
+.clear-search {
+  width: 29px;
+  height: 29px;
+  flex: 0 0 29px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f0f1f7;
+  color: #747a91;
+  font-size: 19px;
+  line-height: 1;
+}
+.clear-search:hover { background: #e5e7f4; color: var(--text); }
+.clear-search[hidden] { display: none; }
+.result-limit {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 3px 7px;
+  vertical-align: 3px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.search-form input:focus-visible,
+.search-form button:focus-visible,
+.suggestion:focus-visible,
+.history-chip:focus-visible,
+.filter-control select:focus-visible,
+.apple-link:focus-visible,
+.itunes-badge-link:focus-visible,
+.text-button:focus-visible {
+  outline: 3px solid rgba(92, 99, 220, .28);
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .search-help { font-size: 9px; }
+  .clear-search { width: 26px; height: 26px; flex-basis: 26px; }
+}
