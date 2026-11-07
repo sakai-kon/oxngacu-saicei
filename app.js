@@ -28,6 +28,7 @@
   let activeController = null;
   let latestRequest = 0;
   let currentTracks = [];
+  let activeAudio = null;
 
   function setStatus(title, message, icon = "♫", loading = false) {
     statusElement.hidden = false;
@@ -60,6 +61,218 @@
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = String(totalSeconds % 60).padStart(2, "0");
     return `${minutes}:${seconds}`;
+  }
+
+  function formatPlayerTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+    const total = Math.floor(seconds);
+    const minutes = Math.floor(total / 60);
+    const remaining = String(total % 60).padStart(2, "0");
+    return `${minutes}:${remaining}`;
+  }
+
+  function getPreviewUrl(track) {
+    if (!track.previewUrl) return "";
+
+    try {
+      const previewUrl = new URL(track.previewUrl);
+      if (previewUrl.protocol === "http:") previewUrl.protocol = "https:";
+      if (previewUrl.protocol !== "https:" ||
+          !previewUrl.hostname.toLowerCase().endsWith("apple.com")) {
+        return "";
+      }
+      return previewUrl.href;
+    } catch {
+      return "";
+    }
+  }
+
+  function createCustomPlayer(track) {
+    const previewUrl = getPreviewUrl(track);
+    if (!previewUrl) {
+      const unavailable = document.createElement("span");
+      unavailable.className = "no-preview";
+      unavailable.textContent = "この曲は試聴できません";
+      return unavailable;
+    }
+
+    const player = document.createElement("div");
+    player.className = "custom-player";
+
+    const audio = document.createElement("audio");
+    audio.preload = "none";
+    audio.src = previewUrl;
+    audio.setAttribute("aria-hidden", "true");
+    audio.tabIndex = -1;
+    audio.setAttribute("controlslist", "nodownload noplaybackrate");
+    audio.disableRemotePlayback = true;
+    audio.hidden = true;
+
+    const playButton = document.createElement("button");
+    playButton.type = "button";
+    playButton.className = "player-play";
+    playButton.textContent = "▶";
+    playButton.setAttribute("aria-label", `${track.trackName || "この曲"}を再生`);
+
+    const seekBack = document.createElement("button");
+    seekBack.type = "button";
+    seekBack.className = "player-skip";
+    seekBack.textContent = "−10";
+    seekBack.setAttribute("aria-label", "10秒戻る");
+
+    const seekForward = document.createElement("button");
+    seekForward.type = "button";
+    seekForward.className = "player-skip";
+    seekForward.textContent = "+10";
+    seekForward.setAttribute("aria-label", "10秒進む");
+
+    const timeline = document.createElement("input");
+    timeline.type = "range";
+    timeline.className = "player-progress";
+    timeline.min = "0";
+    timeline.max = "1000";
+    timeline.step = "1";
+    timeline.value = "0";
+    timeline.disabled = true;
+    timeline.setAttribute("aria-label", `${track.trackName || "この曲"}の再生位置`);
+
+    const timeRow = document.createElement("div");
+    timeRow.className = "player-time-row";
+
+    const elapsed = document.createElement("span");
+    elapsed.className = "player-elapsed";
+    elapsed.textContent = "0:00";
+
+    const total = document.createElement("span");
+    total.className = "player-total";
+    total.textContent = "--:--";
+
+    const volume = document.createElement("input");
+    volume.type = "range";
+    volume.className = "player-volume";
+    volume.min = "0";
+    volume.max = "1";
+    volume.step = "0.05";
+    volume.value = "1";
+    volume.setAttribute("aria-label", "音量");
+
+    const volumeLabel = document.createElement("span");
+    volumeLabel.className = "player-volume-label";
+    volumeLabel.textContent = "音量";
+
+    const topRow = document.createElement("div");
+    topRow.className = "player-top-row";
+    topRow.append(playButton, seekBack, seekForward, timeline);
+
+    const bottomRow = document.createElement("div");
+    bottomRow.className = "player-bottom-row";
+    timeRow.append(elapsed, total);
+    bottomRow.append(timeRow, volumeLabel, volume);
+
+    const message = document.createElement("p");
+    message.className = "player-message";
+    message.setAttribute("role", "status");
+    message.textContent = "Apple提供のプレビュー音源";
+
+    function updatePlayer() {
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const position = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      timeline.disabled = duration <= 0;
+      timeline.value = duration > 0
+        ? String(Math.round(Math.min(1, position / duration) * 1000))
+        : "0";
+      elapsed.textContent = formatPlayerTime(position);
+      total.textContent = duration > 0 ? formatPlayerTime(duration) : "--:--";
+      playButton.textContent = audio.paused ? "▶" : "Ⅱ";
+      playButton.setAttribute(
+        "aria-label",
+        `${track.trackName || "この曲"}を${audio.paused ? "再生" : "一時停止"}`
+      );
+      player.classList.toggle("is-playing", !audio.paused);
+    }
+
+    audio._updateCustomPlayer = updatePlayer;
+
+    playButton.addEventListener("click", async () => {
+      message.textContent = "";
+      if (audio.paused) {
+        if (activeAudio && activeAudio !== audio) {
+          activeAudio.pause();
+          activeAudio._updateCustomPlayer?.();
+        }
+        activeAudio = audio;
+        try {
+          await audio.play();
+        } catch (error) {
+          if (activeAudio === audio) activeAudio = null;
+          message.textContent = "再生できませんでした。時間をおいて再度お試しください。";
+          updatePlayer();
+          console.warn("Preview playback failed:", error);
+        }
+      } else {
+        audio.pause();
+      }
+    });
+
+    seekBack.addEventListener("click", () => {
+      if (Number.isFinite(audio.duration)) {
+        audio.currentTime = Math.max(0, audio.currentTime - 10);
+      }
+    });
+
+    seekForward.addEventListener("click", () => {
+      if (Number.isFinite(audio.duration)) {
+        audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
+      }
+    });
+
+    timeline.addEventListener("input", () => {
+      if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+      elapsed.textContent = formatPlayerTime(
+        (Number(timeline.value) / 1000) * audio.duration
+      );
+    });
+
+    timeline.addEventListener("change", () => {
+      if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+      audio.currentTime = (Number(timeline.value) / 1000) * audio.duration;
+    });
+
+    volume.addEventListener("input", () => {
+      audio.volume = Number(volume.value);
+    });
+
+    audio.addEventListener("play", () => {
+      if (activeAudio && activeAudio !== audio) {
+        activeAudio.pause();
+        activeAudio._updateCustomPlayer?.();
+      }
+      activeAudio = audio;
+      updatePlayer();
+    });
+
+    audio.addEventListener("pause", () => {
+      if (activeAudio === audio) activeAudio = null;
+      updatePlayer();
+    });
+
+    audio.addEventListener("timeupdate", updatePlayer);
+    audio.addEventListener("loadedmetadata", updatePlayer);
+    audio.addEventListener("durationchange", updatePlayer);
+    audio.addEventListener("ended", () => {
+      if (activeAudio === audio) activeAudio = null;
+      updatePlayer();
+    });
+
+    audio.addEventListener("error", () => {
+      message.textContent = "プレビュー音源を読み込めませんでした。";
+      playButton.disabled = true;
+      timeline.disabled = true;
+      updatePlayer();
+    });
+
+    player.append(audio, topRow, bottomRow, message);
+    return player;
   }
 
   function getArtworkSource(track) {
@@ -267,24 +480,15 @@
     const actions = document.createElement("div");
     actions.className = "track-actions";
 
-    // Keep the existing preview player: the audio remains streamed from Apple's preview URL.
-    if (track.previewUrl) {
-      const audio = document.createElement("audio");
-      audio.controls = true;
-      audio.preload = "none";
-      audio.src = track.previewUrl;
-      audio.setAttribute("aria-label", `${track.trackName || "この曲"} の試聴`);
-      actions.append(audio);
+    // Custom controls hide the browser's native audio toolbar. Audio is still streamed from Apple's preview URL.
+    const previewPlayer = createCustomPlayer(track);
+    actions.append(previewPlayer);
 
+    if (track.previewUrl) {
       const attribution = document.createElement("p");
       attribution.className = "preview-credit";
       attribution.textContent = "Preview provided courtesy of iTunes.";
       actions.append(attribution);
-    } else {
-      const noPreview = document.createElement("span");
-      noPreview.className = "no-preview";
-      noPreview.textContent = "この曲は試聴できません";
-      actions.append(noPreview);
     }
 
     const bottom = document.createElement("div");
