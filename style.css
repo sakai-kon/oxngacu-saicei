@@ -301,3 +301,118 @@ h2 { margin: 0; font-size: 23px; letter-spacing: -.7px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Search history and result controls */
+.history-area {
+  width: min(690px, 100%);
+  margin: 24px auto 0;
+  padding: 15px 17px;
+  border: 1px solid #e8eaf2;
+  border-radius: 15px;
+  background: rgba(255,255,255,.72);
+  text-align: left;
+}
+.history-area[hidden] { display: none; }
+.history-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.history-heading-row h2 {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.text-button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #858aa0;
+  font-size: 11px;
+}
+.text-button:hover { color: var(--accent); }
+.history-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.history-chip {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 7px 10px;
+  border: 1px solid #e8eaf2;
+  border-radius: 999px;
+  background: white;
+  color: #666d83;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-chip:hover {
+  border-color: #c9ccf8;
+  color: var(--accent);
+}
+.results-tools {
+  margin: -5px 0 18px;
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.filter-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #858aa0;
+  font-size: 11px;
+}
+.filter-control select {
+  min-width: 130px;
+  max-width: 210px;
+  padding: 8px 30px 8px 10px;
+  border: 1px solid #e5e7f0;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font-size: 11px;
+}
+.filter-control select:disabled { opacity: .55; }
+.track-genre {
+  margin: 6px 0 0;
+  color: #858aa0;
+  font-size: 10px;
+}
+.preview-credit {
+  margin: 7px 0 0;
+  color: #898ea1;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.itunes-badge-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 31px;
+  text-decoration: none;
+}
+.itunes-badge {
+  display: block;
+  width: 108px;
+  height: auto;
+  max-height: 34px;
+}
+.track-actions-bottom {
+  align-items: center;
+  gap: 10px;
+}
+.track-actions-bottom .itunes-badge-link { flex-shrink: 0; }
+@media (max-width: 560px) {
+  .history-area { padding: 13px; }
+  .results-tools {
+    justify-content: flex-start;
+    gap: 8px 13px;
+  }
+  .filter-control { justify-content: space-between; flex: 1 1 100%; }
+  .filter-control select { flex: 1; max-width: none; }
+  .track-actions-bottom { gap: 8px; }
+  .itunes-badge { width: 102px; }
+}
