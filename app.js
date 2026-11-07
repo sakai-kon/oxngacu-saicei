@@ -29,6 +29,7 @@
   let latestRequest = 0;
   let currentTracks = [];
   let activeAudio = null;
+  let playbackIntent = 0;
 
   function setStatus(title, message, icon = "♫", loading = false) {
     statusElement.hidden = false;
@@ -196,6 +197,7 @@
     playButton.addEventListener("click", async () => {
       message.textContent = "";
       if (audio.paused) {
+        const intent = ++playbackIntent;
         if (activeAudio && activeAudio !== audio) {
           activeAudio.pause();
           activeAudio._updateCustomPlayer?.();
@@ -203,13 +205,20 @@
         activeAudio = audio;
         try {
           await audio.play();
+          if (intent !== playbackIntent) {
+            audio.pause();
+            updatePlayer();
+          }
         } catch (error) {
           if (activeAudio === audio) activeAudio = null;
-          message.textContent = "再生できませんでした。時間をおいて再度お試しください。";
+          if (intent === playbackIntent) {
+            message.textContent = "再生できませんでした。時間をおいて再度お試しください。";
+          }
           updatePlayer();
           console.warn("Preview playback failed:", error);
         }
       } else {
+        playbackIntent += 1;
         audio.pause();
       }
     });
@@ -244,8 +253,9 @@
 
     audio.addEventListener("play", () => {
       if (activeAudio && activeAudio !== audio) {
-        activeAudio.pause();
-        activeAudio._updateCustomPlayer?.();
+        audio.pause();
+        updatePlayer();
+        return;
       }
       activeAudio = audio;
       updatePlayer();
@@ -516,6 +526,7 @@
   }
 
   function stopActivePreview() {
+    playbackIntent += 1;
     if (!activeAudio) return;
     const previousAudio = activeAudio;
     activeAudio = null;
