@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8fc">
-  <meta name="description" content="iTunes Search APIを使ったシンプルな音楽検索サイト。曲名やアーティスト名から楽曲を探せます。">
+  <meta name="description" content="iTunes Search APIを使った音楽検索サイト。曲名やアーティスト名から楽曲を探せます。">
   <title>Music Search — 音楽を探す</title>
   <link rel="preconnect" href="https://itunes.apple.com">
+  <link rel="preconnect" href="https://marketing.services.apple">
   <link rel="stylesheet" href="./style.css">
   <script src="./app.js" defer></script>
 </head>
@@ -50,6 +51,14 @@
         <button class="suggestion" type="button" data-query="ブルーバード">ブルーバード</button>
         <button class="suggestion" type="button" data-query="君の知らない物語">君の知らない物語</button>
       </div>
+
+      <section id="history-area" class="history-area" aria-labelledby="history-heading" hidden>
+        <div class="history-heading-row">
+          <h2 id="history-heading">最近の検索</h2>
+          <button id="clear-history" class="text-button" type="button">履歴を消去</button>
+        </div>
+        <div id="history-list" class="history-list"></div>
+      </section>
     </section>
 
     <section class="results-section" aria-labelledby="results-heading">
@@ -59,6 +68,24 @@
           <h2 id="results-heading">検索結果</h2>
         </div>
         <span id="result-count" class="result-count" aria-live="polite"></span>
+      </div>
+
+      <div class="results-tools" aria-label="検索結果の表示設定">
+        <label class="filter-control">
+          <span>ジャンル</span>
+          <select id="genre-filter" disabled>
+            <option value="all">すべて</option>
+          </select>
+        </label>
+        <label class="filter-control">
+          <span>並び替え</span>
+          <select id="sort-select">
+            <option value="relevance">おすすめ順</option>
+            <option value="title">曲名順</option>
+            <option value="artist">アーティスト順</option>
+            <option value="newest">リリースが新しい順</option>
+          </select>
+        </label>
       </div>
 
       <div id="status" class="status" role="status" aria-live="polite">
@@ -73,8 +100,8 @@
 
   <footer class="site-footer">
     <span>Music Search</span>
-    <span>Music metadata provided by the iTunes Search API.</span>
-    <span>試聴音源は利用可能な楽曲のみ表示されます。</span>
+    <span>Search results provided by the iTunes Search API.</span>
+    <span>iTunes Store is a service mark of Apple Inc.</span>
   </footer>
 </body>
 </html>
