@@ -5,6 +5,7 @@
   const CACHE_TTL_MS = 5 * 60 * 1000;
   const MAX_API_CALLS_PER_MINUTE = 18;
   const MAX_CACHE_ENTRIES = 12;
+  const SEARCH_RESULT_LIMIT = 10;
   const MAX_HISTORY_ITEMS = 8;
   const HISTORY_KEY = "music-search-history-v1";
   const ITUNES_BADGE_URL = "https://marketing.services.apple/api/storage/images/64e3de01fe821600071349d4/en-us-large%401x.png";
@@ -12,6 +13,7 @@
   const form = document.querySelector("#search-form");
   const input = document.querySelector("#search-input");
   const searchButton = document.querySelector("#search-button");
+  const clearSearchButton = document.querySelector("#clear-search");
   const resultsElement = document.querySelector("#results");
   const statusElement = document.querySelector("#status");
   const countElement = document.querySelector("#result-count");
@@ -390,7 +392,7 @@
         country: "JP",
         media: "music",
         entity: "song",
-        limit: "30",
+        limit: String(SEARCH_RESULT_LIMIT),
         lang: "ja_jp"
       });
 
@@ -458,6 +460,35 @@
       }
     }
   }
+
+  function syncClearButton() {
+    clearSearchButton.hidden = input.value.length === 0;
+  }
+
+  clearSearchButton.addEventListener("click", () => {
+    input.value = "";
+    syncClearButton();
+    input.focus();
+  });
+
+  input.addEventListener("input", syncClearButton);
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const isTyping = target instanceof HTMLElement && (
+      target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+    );
+
+    if (event.key === "/" && !isTyping && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      input.focus();
+    }
+
+    if (event.key === "Escape" && document.activeElement === input && input.value) {
+      input.value = "";
+      syncClearButton();
+    }
+  });
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
