@@ -1,109 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f8fc">
-  <meta name="description" content="iTunes Search APIを使った音楽検索サイト。曲名やアーティスト名から楽曲を探せます。">
-  <title>Music Search — 音楽を探す</title>
-  <link rel="preconnect" href="https://itunes.apple.com">
-  <link rel="preconnect" href="https://marketing.services.apple">
-  <link rel="stylesheet" href="./style.css">
-  <script src="./app.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>標準音楽プレイヤー (Oxngacu Saicei)</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="./" aria-label="Music Search ホーム">
-      <span class="brand-mark" aria-hidden="true">♪</span>
-      <span>music<span class="brand-light">search</span></span>
-    </a>
-    <span class="header-note">POWERED BY ITUNES SEARCH API</span>
-  </header>
+    <div class="player-container">
+        <header>
+            <h1>標準音楽プレイヤー</h1>
+            <p class="subtitle">音楽再生 ＆ ダウンロード対応</p>
+        </header>
 
-  <main class="page-shell">
-    <section class="hero" aria-labelledby="page-title">
-      <p class="eyebrow">YOUR MUSIC, ONE SEARCH AWAY</p>
-      <h1 id="page-title">聴きたい曲を、<span>すぐに。</span></h1>
-      <p class="hero-copy">曲名やアーティスト名を入力して、音楽を探してみよう。</p>
-
-      <form id="search-form" class="search-form" role="search">
-        <label class="sr-only" for="search-input">曲名またはアーティスト名</label>
-        <span class="search-icon" aria-hidden="true">⌕</span>
-        <input
-          id="search-input"
-          name="q"
-          type="search"
-          placeholder="曲名・アーティスト名で検索"
-          autocomplete="off"
-          maxlength="120"
-          required
-        >
-        <button id="clear-search" class="clear-search" type="button" aria-label="検索キーワードをクリア" title="入力をクリア" hidden>×</button>
-        <button id="search-button" type="submit">
-          <span>検索</span>
-          <span aria-hidden="true">→</span>
-        </button>
-      </form>
-      <p class="search-help">Enterで検索 ・ Escで入力をクリア ・ / キーで検索欄に移動</p>
-
-      <div class="suggestions" aria-label="検索例">
-        <span class="suggestions-label">POPULAR SEARCHES</span>
-        <button class="suggestion" type="button" data-query="only my railgun">only my railgun</button>
-        <button class="suggestion" type="button" data-query="残酷な天使のテーゼ">残酷な天使のテーゼ</button>
-        <button class="suggestion" type="button" data-query="ブルーバード">ブルーバード</button>
-        <button class="suggestion" type="button" data-query="君の知らない物語">君の知らない物語</button>
-      </div>
-
-      <section id="history-area" class="history-area" aria-labelledby="history-heading" hidden>
-        <div class="history-heading-row">
-          <h2 id="history-heading">最近の検索</h2>
-          <button id="clear-history" class="text-button" type="button">履歴を消去</button>
+        <div class="now-playing">
+            <div class="album-art" id="albumArt">🎵</div>
+            <h2 id="trackTitle">曲名を選択してください</h2>
+            <p id="artistName">アーティスト名</p>
         </div>
-        <div id="history-list" class="history-list"></div>
-      </section>
-    </section>
 
-    <section class="results-section" aria-labelledby="results-heading">
-      <div class="results-heading-row">
-        <div>
-          <p class="section-kicker">DISCOVER MUSIC</p>
-          <h2 id="results-heading">検索結果 <span class="result-limit">最大10件</span></h2>
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
         </div>
-        <span id="result-count" class="result-count" aria-live="polite"></span>
-      </div>
+        <div class="time-info">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+        </div>
 
-      <div class="results-tools" aria-label="検索結果の表示設定">
-        <label class="filter-control">
-          <span>ジャンル</span>
-          <select id="genre-filter" disabled>
-            <option value="all">すべて</option>
-          </select>
-        </label>
-        <label class="filter-control">
-          <span>並び替え</span>
-          <select id="sort-select">
-            <option value="relevance">おすすめ順</option>
-            <option value="title">曲名順</option>
-            <option value="artist">アーティスト順</option>
-            <option value="newest">リリースが新しい順</option>
-          </select>
-        </label>
-      </div>
+        <div class="controls">
+            <button id="prevBtn" title="前の曲">⏮</button>
+            <button id="playBtn" title="再生/一時停止">▶</button>
+            <button id="nextBtn" title="次の曲">⏭</button>
+            <button id="downloadBtn" title="ダウンロード">⬇️ ダウンロード</button>
+        </div>
 
-      <div id="status" class="status" role="status" aria-live="polite">
-        <span class="status-icon" aria-hidden="true">♫</span>
-        <strong>音楽を探してみよう</strong>
-        <span>上の検索ボックスから曲名やアーティスト名を検索できます。</span>
-      </div>
+        <div class="volume-container">
+            <span>🔊</span>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
+        </div>
 
-      <div id="results" class="results-grid"></div>
-    </section>
-  </main>
+        <div class="playlist-section">
+            <h3>プレイリスト</h3>
+            <ul id="playlist">
+                <!-- プレイリストアイテムはJavaScriptで動的に追加されます -->
+            </ul>
+        </div>
+        
+        <div class="upload-section">
+            <label for="audioLoader" class="file-upload-btn">📁 音楽ファイルを追加</label>
+            <input type="file" id="audioLoader" accept="audio/*" multiple style="display: none;">
+        </div>
+    </div>
 
-  <footer class="site-footer">
-    <span>Music Search</span>
-    <span>Search results provided by the iTunes Search API.</span>
-    <span>iTunes Store is a service mark of Apple Inc.</span>
-  </footer>
+    <script src="app.js"></script>
 </body>
 </html>
