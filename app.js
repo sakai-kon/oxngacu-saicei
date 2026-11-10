@@ -302,6 +302,8 @@ async function playTrack(trackId) {
         audioElement.pause();
         audioElement.src = track.previewUrl;
         audioElement.load();
+    } else if (audioElement.ended || (Number.isFinite(audioElement.duration) && audioElement.currentTime >= audioElement.duration)) {
+        audioElement.currentTime = 0;
     }
     try {
         await audioElement.play();
@@ -342,6 +344,7 @@ function updateProgressBar() {
 
 function onAudioEnded() {
     updatePlayPauseButtonUI(false);
+    audioElement.currentTime = 0;
     seekBar.value = '0';
     currentTimeEl.textContent = '0:00';
 }
