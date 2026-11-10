@@ -238,17 +238,17 @@ function renderResults() {
                 <div class="track-artist" title="${escapeHtml(track.artistName)}">${escapeHtml(track.artistName)}</div>
                 <div class="track-meta">
                     <span>${escapeHtml(track.collectionName || 'アルバム未登録')}</span>
-                    <span>📁 ${escapeHtml(track.primaryGenreName || '-')}</span>
-                    <span>⏱ ${durationFormatted}</span>
+                    <span>${escapeHtml(track.primaryGenreName || '-')}</span>
+                    <span>${durationFormatted}</span>
                 </div>
             </div>
             <div class="track-actions">
                 <div class="action-buttons">
                     <button class="preview-btn" ${track.previewUrl ? '' : 'disabled'} onclick="playTrack('${track.trackId}')">
-                        ${track.previewUrl ? '▶ 試聴' : '試聴不可'}
+                        ${track.previewUrl ? '試聴する' : '試聴不可'}
                     </button>
                     <button class="download-btn" ${track.previewUrl ? '' : 'disabled'} onclick="downloadTrack('${track.trackId}')">
-                        ⬇️ DL
+                        保存
                     </button>
                 </div>
             </div>
@@ -315,7 +315,7 @@ function togglePlayPause() {
 }
 
 function updatePlayPauseButtonUI(isPlaying) {
-    playPauseBtn.textContent = isPlaying ? '⏸' : '▶';
+    playPauseBtn.textContent = isPlaying ? 'Ⅱ' : '▶';
 }
 
 function skipTime(seconds) {
