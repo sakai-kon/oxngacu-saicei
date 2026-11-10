@@ -3,53 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>標準音楽プレイヤー (Oxngacu Saicei)</title>
+    <title>Music Search - iTunes Preview & Download</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="player-container">
-        <header>
-            <h1>標準音楽プレイヤー</h1>
-            <p class="subtitle">音楽再生 ＆ ダウンロード対応</p>
+    <div class="app-container">
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <h1>🎵 Music Search & Download</h1>
+            <p>iTunes Search API 音楽検索・試聴＆ダウンロード対応プレイヤー</p>
         </header>
 
-        <div class="now-playing">
-            <div class="album-art" id="albumArt">🎵</div>
-            <h2 id="trackTitle">曲名を選択してください</h2>
-            <p id="artistName">アーティスト名</p>
-        </div>
+        <!-- 検索セクション -->
+        <section class="search-section">
+            <div class="search-box-wrapper">
+                <input type="text" id="searchInput" placeholder="曲名やアーティスト名を入力... (/ キーでフォーカス)" autocomplete="off">
+                <button id="clearInputBtn" class="icon-btn" title="入力をクリア (Esc)">✕</button>
+                <button id="searchBtn" class="primary-btn">検索</button>
+            </div>
+            <div id="rateLimitWarning" class="warning-msg" style="display: none;"></div>
+        </section>
 
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-        <div class="time-info">
-            <span id="currentTime">0:00</span>
-            <span id="duration">0:00</span>
-        </div>
+        <!-- 検索履歴 -->
+        <section class="history-section" id="historySection" style="display: none;">
+            <div class="history-header">
+                <span>最近の検索:</span>
+                <button id="clearHistoryBtn" class="text-btn">履歴をクリア</button>
+            </div>
+            <div class="history-chips" id="historyChips"></div>
+        </section>
 
-        <div class="controls">
-            <button id="prevBtn" title="前の曲">⏮</button>
-            <button id="playBtn" title="再生/一時停止">▶</button>
-            <button id="nextBtn" title="次の曲">⏭</button>
-            <button id="downloadBtn" title="ダウンロード">⬇️ ダウンロード</button>
-        </div>
+        <!-- フィルター・ソートコントロール -->
+        <section class="controls-section" id="controlsSection" style="display: none;">
+            <div class="control-group">
+                <label for="genreFilter">ジャンル絞り込み:</label>
+                <select id="genreFilter">
+                    <option value="all">すべて</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="sortSelect">並び替え:</label>
+                <select id="sortSelect">
+                    <option value="default">標準（API順）</option>
+                    <option value="track-asc">曲名 (昇順)</option>
+                    <option value="track-desc">曲名 (降順)</option>
+                    <option value="artist-asc">アーティスト名 (昇順)</option>
+                    <option value="date-desc">リリース日新しい順</option>
+                    <option value="date-asc">リリース日古い順</option>
+                </select>
+            </div>
+        </section>
 
-        <div class="volume-container">
-            <span>🔊</span>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
-        </div>
+        <!-- ステータス・ローディング -->
+        <div id="statusMessage" class="status-msg"></div>
 
-        <div class="playlist-section">
-            <h3>プレイリスト</h3>
-            <ul id="playlist">
-                <!-- プレイリストアイテムはJavaScriptで動的に追加されます -->
-            </ul>
-        </div>
-        
-        <div class="upload-section">
-            <label for="audioLoader" class="file-upload-btn">📁 音楽ファイルを追加</label>
-            <input type="file" id="audioLoader" accept="audio/*" multiple style="display: none;">
-        </div>
+        <!-- 検索結果一覧 -->
+        <main class="results-section">
+            <div id="resultsList" class="results-list"></div>
+        </main>
+
+        <!-- 独自オーディオプレイヤー（固定フッター） -->
+        <footer class="player-footer" id="playerFooter" style="display: none;">
+            <div class="player-track-info">
+                <img id="playerArt" src="" alt="Album Art">
+                <div class="player-text">
+                    <div id="playerTitle" class="player-title">-</div>
+                    <div id="playerArtist" class="player-artist">-</div>
+                </div>
+            </div>
+
+            <div class="player-main-controls">
+                <div class="player-buttons">
+                    <button id="skipBackwardBtn" title="10秒巻き戻し">⏪ 10秒</button>
+                    <button id="playPauseBtn" title="再生/一時停止">▶</button>
+                    <button id="skipForwardBtn" title="10秒早送り">10秒 ⏩</button>
+                </div>
+                <div class="player-progress-area">
+                    <span id="currentTime">0:00</span>
+                    <input type="range" id="seekBar" value="0" min="0" max="100" step="0.1">
+                    <span id="duration">0:30</span>
+                </div>
+            </div>
+
+            <div class="player-sub-controls">
+                <button id="playerDownloadBtn" class="download-btn-small" title="この曲をダウンロード">⬇️ ダウンロード</button>
+                <div class="volume-box">
+                    <span>🔊</span>
+                    <input type="range" id="volumeBar" min="0" max="1" step="0.05" value="1">
+                </div>
+            </div>
+            <audio id="audioElement"></audio>
+        </footer>
+
+        <!-- Apple帰属表示 -->
+        <footer class="attribution-footer">
+            <p>Preview powered by iTunes Search API.</p>
+            <a href="https://link.maker.itunes.apple.com/en-us/details?badge=itunes-store-us" target="_blank" rel="noopener">
+                <img src="https://linkmaker.itunes.apple.com/assets/shared/badges/en-us/itunes-store-us.svg" alt="Listen on Apple Music" style="height: 40px; width: 120px;">
+            </a>
+        </footer>
     </div>
 
     <script src="app.js"></script>
