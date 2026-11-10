@@ -115,7 +115,6 @@ function setupEventListeners() {
 function clearInput() {
     searchInput.value = '';
     searchInput.focus();
-    if (clearInputBtn) clearInputBtn.style.display = 'none';
 }
 
 function checkRateLimit() {
@@ -139,8 +138,10 @@ async function performSearch(termOverride = null) {
     }
     searchInput.value = term;
 
+    const requestId = ++activeRequestId;
     const cached = searchCache.get(term);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        if (searchBtn) { searchBtn.disabled = false; searchBtn.textContent = '検索'; }
         currentResults = cached.data;
         onSearchSuccess(term, currentResults, true);
         return;
@@ -150,8 +151,9 @@ async function performSearch(termOverride = null) {
         return;
     }
 
-    const requestId = ++activeRequestId;
     requestTimestamps.push(Date.now());
+    currentResults = [];
+    controlsSection.style.display = 'none';
     searchBtn && (searchBtn.disabled = true);
     if (searchBtn) searchBtn.textContent = '検索中';
     statusMessage.textContent = '検索中...';
