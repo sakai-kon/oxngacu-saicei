@@ -1,109 +1,26 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Search - iTunes Preview & Download</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="app-container">
-        <!-- ヘッダー -->
-        <header class="app-header">
-            <h1>🎵 Music Search & Download</h1>
-            <p>iTunes Search API 音楽検索・試聴＆ダウンロード対応プレイヤー</p>
-        </header>
-
-        <!-- 検索セクション -->
-        <section class="search-section">
-            <div class="search-box-wrapper">
-                <input type="text" id="searchInput" placeholder="曲名やアーティスト名を入力... (/ キーでフォーカス)" autocomplete="off">
-                <button id="clearInputBtn" class="icon-btn" title="入力をクリア (Esc)">✕</button>
-                <button id="searchBtn" class="primary-btn">検索</button>
-            </div>
-            <div id="rateLimitWarning" class="warning-msg" style="display: none;"></div>
-        </section>
-
-        <!-- 検索履歴 -->
-        <section class="history-section" id="historySection" style="display: none;">
-            <div class="history-header">
-                <span>最近の検索:</span>
-                <button id="clearHistoryBtn" class="text-btn">履歴をクリア</button>
-            </div>
-            <div class="history-chips" id="historyChips"></div>
-        </section>
-
-        <!-- フィルター・ソートコントロール -->
-        <section class="controls-section" id="controlsSection" style="display: none;">
-            <div class="control-group">
-                <label for="genreFilter">ジャンル絞り込み:</label>
-                <select id="genreFilter">
-                    <option value="all">すべて</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="sortSelect">並び替え:</label>
-                <select id="sortSelect">
-                    <option value="default">標準（API順）</option>
-                    <option value="track-asc">曲名 (昇順)</option>
-                    <option value="track-desc">曲名 (降順)</option>
-                    <option value="artist-asc">アーティスト名 (昇順)</option>
-                    <option value="date-desc">リリース日新しい順</option>
-                    <option value="date-asc">リリース日古い順</option>
-                </select>
-            </div>
-        </section>
-
-        <!-- ステータス・ローディング -->
-        <div id="statusMessage" class="status-msg"></div>
-
-        <!-- 検索結果一覧 -->
-        <main class="results-section">
-            <div id="resultsList" class="results-list"></div>
-        </main>
-
-        <!-- 独自オーディオプレイヤー（固定フッター） -->
-        <footer class="player-footer" id="playerFooter" style="display: none;">
-            <div class="player-track-info">
-                <img id="playerArt" src="" alt="Album Art">
-                <div class="player-text">
-                    <div id="playerTitle" class="player-title">-</div>
-                    <div id="playerArtist" class="player-artist">-</div>
-                </div>
-            </div>
-
-            <div class="player-main-controls">
-                <div class="player-buttons">
-                    <button id="skipBackwardBtn" title="10秒巻き戻し">⏪ 10秒</button>
-                    <button id="playPauseBtn" title="再生/一時停止">▶</button>
-                    <button id="skipForwardBtn" title="10秒早送り">10秒 ⏩</button>
-                </div>
-                <div class="player-progress-area">
-                    <span id="currentTime">0:00</span>
-                    <input type="range" id="seekBar" value="0" min="0" max="100" step="0.1">
-                    <span id="duration">0:30</span>
-                </div>
-            </div>
-
-            <div class="player-sub-controls">
-                <button id="playerDownloadBtn" class="download-btn-small" title="この曲をダウンロード">⬇️ ダウンロード</button>
-                <div class="volume-box">
-                    <span>🔊</span>
-                    <input type="range" id="volumeBar" min="0" max="1" step="0.05" value="1">
-                </div>
-            </div>
-            <audio id="audioElement"></audio>
-        </footer>
-
-        <!-- Apple帰属表示 -->
-        <footer class="attribution-footer">
-            <p>Preview powered by iTunes Search API.</p>
-            <a href="https://link.maker.itunes.apple.com/en-us/details?badge=itunes-store-us" target="_blank" rel="noopener">
-                <img src="https://linkmaker.itunes.apple.com/assets/shared/badges/en-us/itunes-store-us.svg" alt="Listen on Apple Music" style="height: 40px; width: 120px;">
-            </a>
-        </footer>
-    </div>
-
-    <script src="app.js"></script>
-</body>
-</html>
+<html lang="ja"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f5f7"><meta name="description" content="iTunes Search API 音楽検索・プレビューアプリ">
+<title>Music — Search & Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body><div class="app-container">
+<header class="app-header"><a class="brand" href="./"><span class="brand-mark">M</span><span>music<span class="brand-period">.</span></span></a>
+<div class="header-copy"><p class="eyebrow">DISCOVER YOUR SOUND</p><h1>音楽を、もっと自由に。</h1><p class="header-description">曲やアーティストを検索して、プレビューを楽しもう。</p></div></header>
+<main><section class="search-section" aria-label="音楽検索"><div class="search-box-wrapper">
+<span class="search-symbol" aria-hidden="true"></span><input type="text" id="searchInput" placeholder="曲名、アーティスト名で検索" autocomplete="off" aria-label="検索キーワード">
+<button id="clearInputBtn" class="icon-btn" title="入力をクリア" aria-label="入力をクリア">×</button><button id="searchBtn" class="primary-btn">検索</button></div>
+<p class="search-hint">Enterで検索 · /で検索欄に移動</p><div id="rateLimitWarning" class="warning-msg" style="display:none;"></div></section>
+<section class="history-section" id="historySection" style="display:none;"><div class="section-heading"><div><p class="eyebrow">RECENT</p><h2>最近の検索</h2></div><button id="clearHistoryBtn" class="text-btn">履歴をクリア</button></div><div class="history-chips" id="historyChips"></div></section>
+<section class="controls-section" id="controlsSection" style="display:none;"><div class="results-heading"><div><p class="eyebrow">YOUR RESULTS</p><h2>検索結果</h2></div></div><div class="filter-controls">
+<label class="control-group"><span>ジャンル</span><select id="genreFilter"><option value="all">すべて</option></select></label>
+<label class="control-group"><span>並び替え</span><select id="sortSelect"><option value="default">おすすめ順</option><option value="track-asc">曲名（昇順）</option><option value="track-desc">曲名（降順）</option><option value="artist-asc">アーティスト名</option><option value="date-desc">新しい順</option><option value="date-asc">古い順</option></select></label></div></section>
+<div id="statusMessage" class="status-msg" aria-live="polite"></div><section class="results-section"><div id="resultsList" class="results-list"></div></section></main>
+<footer class="attribution-footer"><p>Music previews provided by the iTunes Search API.</p><a href="https://www.apple.com/apple-music/" target="_blank" rel="noopener noreferrer">Apple Musicについて</a></footer></div>
+<footer class="player-footer" id="playerFooter" style="display:none;"><div class="player-track-info"><img id="playerArt" src="" alt="アルバムアート"><div class="player-text"><div id="playerTitle" class="player-title">-</div><div id="playerArtist" class="player-artist">-</div></div></div>
+<div class="player-main-controls"><div class="player-buttons"><button id="skipBackwardBtn" class="secondary-control" title="10秒戻す">−10</button><button id="playPauseBtn" title="再生/一時停止" aria-label="再生/一時停止">▶</button><button id="skipForwardBtn" class="secondary-control" title="10秒進める">+10</button></div>
+<div class="player-progress-area"><span id="currentTime">0:00</span><input type="range" id="seekBar" value="0" min="0" max="100" step="0.1" aria-label="再生位置"><span id="duration">0:30</span></div></div>
+<div class="player-sub-controls"><button id="playerDownloadBtn" class="download-btn-small">プレビューを保存</button><label class="volume-box"><span>音量</span><input type="range" id="volumeBar" min="0" max="1" step="0.05" value="1" aria-label="音量"></label></div><audio id="audioElement"></audio></footer>
+<script src="app.js"></script></body></html>
